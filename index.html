@@ -1,0 +1,87 @@
+<h2 class="sr-only">グラム・シュミットの直交化で、ベクトルから前のベクトルへの正射影を引く量をスライダーで変え、内積が0になる様子を示す3D図</h2>
+<style>
+.row{display:flex;align-items:center;gap:12px;margin:0 0 12px}
+.lab{font-size:14px;color:var(--text-secondary)}
+.mono{font-family:var(--font-mono);font-size:14px;line-height:1.9}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+</style>
+<div style="padding:1rem 0 0">
+<div class="row">
+<button id="prev" aria-label="前のステップ"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+<span id="stepname" style="font-size:15px;font-weight:500;flex:1">ステップ 1：u₁ := v₁</span>
+<button id="next" aria-label="次のステップ"><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+<button id="rand"><i class="ti ti-refresh" aria-hidden="true"></i> ベクトルを変える</button>
+</div>
+<div class="row" id="rowa" style="display:none">
+<span class="lab" style="min-width:150px" id="laba">u₁ 方向を引く量</span>
+<input type="range" id="a" min="0" max="1" step="0.01" value="0" style="flex:1">
+<span id="aout" style="font-size:14px;font-weight:500;min-width:40px;text-align:right">0.00</span>
+</div>
+<div class="row" id="rowb" style="display:none">
+<span class="lab" style="min-width:150px">u₂ 方向を引く量</span>
+<input type="range" id="b" min="0" max="1" step="0.01" value="0" style="flex:1">
+<span id="bout" style="font-size:14px;font-weight:500;min-width:40px;text-align:right">0.00</span>
+</div>
+<div id="view" style="width:100%;height:380px;cursor:grab;border-radius:12px;background:var(--surface-1)"></div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text-secondary);margin:10px 0 4px">
+<span><span class="sw" style="background:#B4B2A9"></span>元の v</span>
+<span><span class="sw" style="background:#7F77DD"></span>確定した u</span>
+<span><span class="sw" style="background:#D85A30"></span>正射影（引く成分）</span>
+<span><span class="sw" style="background:#1D9E75"></span>作っている途中のベクトル w</span>
+</div>
+<div class="mono" id="read"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const el=document.getElementById('view');const W=()=>el.clientWidth,H=()=>el.clientHeight;
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(W(),H());el.appendChild(renderer.domElement);
+const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(40,W()/H(),0.1,100);
+let th=0.7,ph=1.1,R=9;
+function place(){cam.position.set(R*Math.sin(ph)*Math.cos(th),R*Math.cos(ph),R*Math.sin(ph)*Math.sin(th));cam.lookAt(0.6,0.5,-0.4);}
+const V=a=>new THREE.Vector3(a[0],a[2],-a[1]);
+const add=(p,q)=>p.map((x,i)=>x+q[i]),sub=(p,q)=>p.map((x,i)=>x-q[i]),sc=(p,s)=>p.map(x=>x*s),dot=(p,q)=>p[0]*q[0]+p[1]*q[1]+p[2]*q[2];
+const proj=(v,u)=>sc(u,dot(u,v)/dot(u,u));
+[[3,0,0],[0,3,0],[0,0,3]].forEach(t=>{const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),V(t)]);scene.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:0xD3D1C7})));});
+function mkArrow(col){const a=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),1,col,0.25,0.14);a.line.material.linewidth=2;scene.add(a);return a;}
+function mkLabel(t,col){const c=document.createElement('canvas');c.width=128;c.height=64;const x=c.getContext('2d');x.fillStyle=col;x.font='500 40px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(t,64,32);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));s.scale.set(0.7,0.35,1);scene.add(s);return s;}
+function setA(ar,from,vec,lb){const len=Math.hypot(...vec);if(len<1e-3){ar.visible=false;if(lb)lb.visible=false;return;}ar.visible=true;ar.position.copy(V(from));ar.setDirection(V(vec).normalize());ar.setLength(len,Math.min(0.25,len*0.4),Math.min(0.14,len*0.25));if(lb){lb.visible=true;lb.position.copy(V(add(from,sc(vec,1.12))));}}
+function hide(...xs){xs.forEach(x=>x.visible=false);}
+const G=0x9C9A92,P=0x7F77DD,C=0xD85A30,T=0x1D9E75;
+const aV=[mkArrow(G),mkArrow(G),mkArrow(G)],lV=[mkLabel('v₁','#888780'),mkLabel('v₂','#888780'),mkLabel('v₃','#888780')];
+const aU=[mkArrow(P),mkArrow(P),mkArrow(P)],lU=[mkLabel('u₁','#7F77DD'),mkLabel('u₂','#7F77DD'),mkLabel('u₃','#7F77DD')];
+const aP1=mkArrow(C),aP2=mkArrow(C),aS1=mkArrow(C),aS2=mkArrow(C),aW=mkArrow(T),lW=mkLabel('w','#1D9E75');
+const lP1=mkLabel('射影','#D85A30'),lP2=mkLabel('射影','#D85A30');
+let v=[[2.2,0.3,0.2],[1.3,1.9,0.4],[1.0,0.9,1.9]];
+let step=0;const names=['ステップ 1：u₁ := v₁','ステップ 2：v₂ から u₁ 方向を引いて u₂','ステップ 3：v₃ から u₁, u₂ 方向を引いて u₃','完成：u₁, u₂, u₃ は互いに直交'];
+const as=document.getElementById('a'),bs=document.getElementById('b'),rd=document.getElementById('read');
+const f=x=>{const r=Math.abs(x)<0.005?0:x;return (r<0?'−':'')+Math.abs(r).toFixed(2);};
+const ok=x=>Math.abs(x)<0.005?' <span style="color:var(--text-success)">直交</span>':'';
+function upd(){
+const a=parseFloat(as.value),b=parseFloat(bs.value);document.getElementById('aout').textContent=a.toFixed(2);document.getElementById('bout').textContent=b.toFixed(2);
+const u1=v[0],u2=sub(v[1],proj(v[1],u1)),u3=sub(sub(v[2],proj(v[2],u1)),proj(v[2],u2));
+document.getElementById('stepname').textContent=names[step];
+document.getElementById('rowa').style.display=(step===1||step===2)?'flex':'none';
+document.getElementById('rowb').style.display=step===2?'flex':'none';
+hide(aP1,aP2,aS1,aS2,aW,lW,lP1,lP2,...aU,...lU,...aV,...lV);
+const O=[0,0,0];let h='';
+if(step===0){setA(aU[0],O,u1,lU[0]);setA(aV[1],O,v[1],lV[1]);setA(aV[2],O,v[2],lV[2]);h='u₁ はそのまま v₁。これが基準の方向になる。';}
+if(step===1){const p=proj(v[1],u1);const w=sub(v[1],sc(p,a));setA(aU[0],O,u1,lU[0]);setA(aV[1],O,v[1],lV[1]);setA(aP1,O,p,lP1);setA(aS1,v[1],sc(p,-a));setA(aW,O,w,lW);
+h='w = v₂ − '+a.toFixed(2)+' × (u₁·v₂ / u₁·u₁) u₁<br>u₁ · w = '+f(dot(u1,w))+ok(dot(u1,w));}
+if(step===2){const p1=proj(v[2],u1),p2=proj(v[2],u2);const m=sub(v[2],sc(p1,a));const w=sub(m,sc(p2,b));
+setA(aU[0],O,u1,lU[0]);setA(aU[1],O,u2,lU[1]);setA(aV[2],O,v[2],lV[2]);setA(aP1,O,p1,lP1);setA(aP2,O,p2,lP2);setA(aS1,v[2],sc(p1,-a));setA(aS2,m,sc(p2,-b));setA(aW,O,w,lW);
+h='w = v₃ − '+a.toFixed(2)+' × (u₁ 方向の射影) − '+b.toFixed(2)+' × (u₂ 方向の射影)<br>u₁ · w = '+f(dot(u1,w))+ok(dot(u1,w))+'<br>u₂ · w = '+f(dot(u2,w))+ok(dot(u2,w));}
+if(step===3){setA(aU[0],O,u1,lU[0]);setA(aU[1],O,u2,lU[1]);setA(aU[2],O,u3,lU[2]);
+h='u₁ · u₂ = '+f(dot(u1,u2))+ok(dot(u1,u2))+'<br>u₁ · u₃ = '+f(dot(u1,u3))+ok(dot(u1,u3))+'<br>u₂ · u₃ = '+f(dot(u2,u3))+ok(dot(u2,u3));}
+rd.innerHTML=h;}
+as.oninput=upd;bs.oninput=upd;
+document.getElementById('next').onclick=()=>{step=Math.min(3,step+1);as.value=0;bs.value=0;upd();};
+document.getElementById('prev').onclick=()=>{step=Math.max(0,step-1);as.value=0;bs.value=0;upd();};
+document.getElementById('rand').onclick=()=>{const r=()=>Math.round((Math.random()*2.4-0.4)*10)/10;v=[[1.6+Math.random(),r()*0.5,r()*0.5],[r(),1.4+Math.random()*0.8,r()*0.6],[r(),r(),1.4+Math.random()*0.8]];as.value=0;bs.value=0;upd();};
+let drag=false,lx=0,ly=0;
+el.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;el.setPointerCapture(e.pointerId);el.style.cursor='grabbing';});
+el.addEventListener('pointerup',()=>{drag=false;el.style.cursor='grab';});
+el.addEventListener('pointermove',e=>{if(!drag)return;th+=(e.clientX-lx)*0.01;ph=Math.min(3.0,Math.max(0.15,ph-(e.clientY-ly)*0.01));lx=e.clientX;ly=e.clientY;});
+window.addEventListener('resize',()=>{renderer.setSize(W(),H());cam.aspect=W()/H();cam.updateProjectionMatrix();});
+function loop(){requestAnimationFrame(loop);place();renderer.render(scene,cam);}
+upd();loop();
+</script>
